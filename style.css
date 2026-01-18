@@ -1291,3 +1291,82 @@ button:disabled {
         font-size: 1.5rem;
     }
 }
+
+
+/*Addition code*/
+
+.player-instruction{
+    transition: opacity 0.3s ease;
+}
+
+.word-revealed {
+    transition: opacity 0.5 ease;
+}
+
+#player-role.visible {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn{
+    from{opacity:0; transform: translateY(10px);}
+    to{opacity: 1; transform: translate(0);}
+}
+
+.word-hidden{
+    opacity:1;
+    transition: opacity 0.3s ease;
+}
+
+.word-revealed:not(.active){
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Add to style.css */
+#player-role {
+    transition: all 0.3s ease;
+    display: inline-block;
+    min-width: 200px;
+}
+
+.word-hidden {
+    transition: opacity 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.word-revealed {
+    transition: opacity 0.5s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    font-size: 4rem;
+    font-weight: 800;
+    color: white;
+    opacity: 0;
+}
+
+.word-revealed.active {
+    opacity: 1;
+    animation: wordReveal 0.5s ease-out;
+}
+
+@keyframes wordReveal {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.player-instruction {
+    min-height: 30px;
+    transition: opacity 0.3s ease;
+}

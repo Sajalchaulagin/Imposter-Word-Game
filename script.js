@@ -12,7 +12,7 @@ const gameState = {
     discussionTimer: null,
     isSoundOn: true,
     regularWord: '',
-    imposterWords: [],
+    imposterWord: '', // CHANGED: Single imposter word for all imposters
     gameWords: [
         // Categories and words for the game
         {
@@ -820,6 +820,15 @@ function playSound(soundType) {
     }
 }
 
+function updateAllPlayerStates() {
+    // Ensure all players start with hidden state
+    if (gameState.players && gameState.players.length > 0) {
+        gameState.players.forEach(player => {
+            player.hasRevealed = false;
+        });
+    }
+}
+
 function createConfetti() {
     const confettiContainer = document.getElementById('confetti-container');
     confettiContainer.innerHTML = '';
@@ -1035,7 +1044,8 @@ function startGame() {
             id: i,
             name: input.value.trim(),
             isImposter: false,
-            word: ''
+            word: '',
+            hasRevealed: false
         });
     }
 
@@ -1053,20 +1063,16 @@ function startGame() {
     // Select a random word set
     const randomWordSet = gameState.gameWords[Math.floor(Math.random() * gameState.gameWords.length)];
     gameState.regularWord = randomWordSet.regularWord;
-
-    // Shuffle imposter words and assign to imposters
-    const shuffledImposterWords = [...randomWordSet.imposterWords].sort(() => Math.random() - 0.5);
-    gameState.imposterWords = shuffledImposterWords.slice(0, gameState.imposterCount);
+    gameState.imposterWord = randomWordSet.imposterWords[0];
 
     // Assign words to players
-    let imposterWordIndex = 0;
-    gameState.players.forEach((player, index) => {
+    gameState.players.forEach(player => {
         if (player.isImposter) {
-            player.word = gameState.imposterWords[imposterWordIndex];
-            imposterWordIndex++;
+            player.word = gameState.imposterWord;
         } else {
             player.word = gameState.regularWord;
         }
+        player.hasRevealed = false;
     });
 
     // Reset game state
@@ -1079,7 +1085,7 @@ function startGame() {
     showWordViewScreen();
 }
 
-// Word View Screen Functions
+// Word View Screen Functions - FIXED
 function showWordViewScreen() {
     showScreen('wordView');
     updateWordViewScreen();
@@ -1090,9 +1096,12 @@ function updateWordViewScreen() {
 
     // Update player info
     currentPlayerNameElement.textContent = currentPlayer.name;
-    playerRoleElement.textContent = currentPlayer.isImposter ? 'an IMPOSTER' : 'a regular player';
-    playerRoleElement.style.color = currentPlayer.isImposter ? '#ff6b6b' : '#43cea2';
-
+    
+    // Reset role display - show default message
+    playerRoleElement.textContent = "will appear when you reveal your word";
+    playerRoleElement.style.color = "";
+    playerRoleElement.style.fontWeight = "";
+    
     // Update progress
     currentPlayerIndexElement.textContent = gameState.currentPlayerIndex + 1;
     totalPlayersElement.textContent = gameState.players.length;
@@ -1101,11 +1110,19 @@ function updateWordViewScreen() {
     wordProgressElement.style.width = `${progressPercentage}%`;
 
     // Reset word display
-    wordDisplayElement.textContent = '';
+    wordDisplayElement.textContent = "";
     wordDisplayElement.classList.remove('active');
+    
+    // Show the lock icon (word-hidden div)
+    const wordHiddenDiv = document.querySelector('.word-hidden');
+    if (wordHiddenDiv) {
+        wordHiddenDiv.style.display = 'flex';
+    }
+
+    // Reset button states
     revealWordButton.disabled = false;
     hideWordButton.disabled = true;
-
+    
     // Set up button events
     revealWordButton.onclick = revealWord;
     hideWordButton.onclick = hideAndPass;
@@ -1118,13 +1135,32 @@ function revealWord() {
     }
 
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    
+    // Show word
     wordDisplayElement.textContent = currentPlayer.word;
-
-    // Add some animation
-    setTimeout(() => {
-        wordDisplayElement.classList.add('active');
-    }, 100);
-
+    
+    // Show role with color coding
+    if (currentPlayer.isImposter) {
+        playerRoleElement.textContent = "IMPOSTER 👺";
+        playerRoleElement.style.color = "#ff6b6b";
+    } else {
+        playerRoleElement.textContent = "Regular Player 👍";
+        playerRoleElement.style.color = "#43cea2";
+    }
+    playerRoleElement.style.fontWeight = "bold";
+    
+    // Hide the lock icon and show the word
+    const wordHiddenDiv = document.querySelector('.word-hidden');
+    if (wordHiddenDiv) {
+        wordHiddenDiv.style.display = 'none';
+    }
+    
+    // Show the word with animation
+    wordDisplayElement.classList.add('active');
+    
+    // Mark player as having revealed
+    currentPlayer.hasRevealed = true;
+    
     // Enable hide button, disable reveal button
     revealWordButton.disabled = true;
     hideWordButton.disabled = false;
@@ -1136,10 +1172,15 @@ function hideAndPass() {
         playSound('click');
     }
 
-    // Move to next player or start the game
+    // Reset current player's visible state
+    const currentPlayer = gameState.players[gameState.currentPlayerIndex];
+    currentPlayer.hasRevealed = false;
+    
+    // Move to next player
     gameState.currentPlayerIndex++;
 
     if (gameState.currentPlayerIndex < gameState.players.length) {
+        // Next player
         updateWordViewScreen();
     } else {
         // All players have seen their words, start the game
@@ -1191,7 +1232,7 @@ function nextTurn() {
         playerId: currentPlayer.id,
         playerName: currentPlayer.name,
         round: gameState.currentRound,
-        word: "[Spoken word]" // In real play, players speak their word
+        word: "[Spoken word]"
     });
 
     // Move to next player
@@ -1255,7 +1296,7 @@ function startDiscussion() {
     showScreen('discussion');
 
     // Reset discussion timer
-    gameState.discussionTimeLeft = 300; // 5 minutes
+    gameState.discussionTimeLeft = 300;
     updateTimerDisplay();
 
     // Set up timer controls
@@ -1372,8 +1413,8 @@ function handleResult(impostersWon) {
 
     // Determine losers
     const losers = impostersWon
-        ? gameState.players.filter(player => !player.isImposter) // Regular players lose
-        : gameState.players.filter(player => player.isImposter); // Imposters lose
+        ? gameState.players.filter(player => !player.isImposter)
+        : gameState.players.filter(player => player.isImposter);
 
     // Generate a random truth or dare
     const isTruth = Math.random() > 0.5;
@@ -1515,6 +1556,9 @@ function resetGame() {
         playSound('transition');
     }
 
+    // Reset all player states
+    updateAllPlayerStates();
+
     // Reset game state but keep player names and counts
     const playerNames = gameState.players.map(player => player.name);
     const playerCount = gameState.playerCount;
@@ -1533,9 +1577,8 @@ function resetGame() {
         discussionTimeLeft: 300,
         discussionTimer: null,
         regularWord: '',
-        imposterWords: [],
+        imposterWord: '',
         roundHistory: []
-        // Keep challengeHistory, truths, dares, gameWords, and isSoundOn
     });
 
     // Go back to setup screen
